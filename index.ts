@@ -21,7 +21,7 @@ interface Person {
   address: {
     street: string;
     city: string;
-    messages: Message;
+    messages: Message[];
   };
 }
 
@@ -36,17 +36,25 @@ const over: OverrideTypes<Some, Date> = {
 };
 
 /** output fields protocol */
-type IncludedOutputFields<T, Prefix extends string = ""> = {
-  [K in keyof T]: K extends string | number
-    ? T[K] extends object
-      ? `${IncludedOutputFields<T[K], `${Prefix}${K}.`>}`
-      : `${Prefix}${K}`
-    : never;
-}[keyof T];
+type IncludedFields<Entity, Prefix extends string = ""> = {
+  [Key in keyof Entity]: Key extends string | number
+      ? Entity[Key] extends (infer U)[]
+          ? `${Prefix}${Key}` | `${IncludedFields<U, `${Prefix}${Key}.`>}`
+          : Entity[Key] extends object
+          ? Entity[Key] extends (...arg: any) => any
+              ? never
+              : `${Prefix}${Key}` | `${IncludedFields<Entity[Key], `${Prefix}${Key}.`>}`
+          : `${Prefix}${Key}`
+      : never;
+}[keyof Entity];
 
-type ExcludedOutputFields<T> = `-${IncludedOutputFields<T>}`;
+type GetArrayType<T> = T extends (infer U)[] ? U : never;
+type SomeT<T> =  T extends string | number ? T : never;
 
-/** TODO array not support */
-type OutputFields<T> = ExcludedOutputFields<T> | IncludedOutputFields<T>;
+/** @example "-message.id" */
+type ExcludedFields<T> = `-${IncludedFields<T>}`;
 
-const some: IncludedOutputFields<Person> = "address.messages.user.status";
+
+type OutputFields<T> = ExcludedFields<T>[] | IncludedFields<T>[]
+
+const some: OutputFields<Person> = ["address.messages.user.status", "address.messages.user.status"];
